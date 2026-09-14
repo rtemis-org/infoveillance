@@ -13,9 +13,13 @@ ByteCompile: yes
 Depends:
     R (>= 4.1.0)
 Imports:
+    curl,
+    data.table,
+    jsonlite,
     methods,
+    rtemis.core,
     S7,
-    rtemis.core
+    utils
 Suggests:
     testthat (>= 3.0.0)
 Additional_repositories: https://rtemis-org.r-universe.dev

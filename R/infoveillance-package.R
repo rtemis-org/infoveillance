@@ -3,12 +3,12 @@
 #' \pkg{infoveillance}: 'infoveillance' Package
 #'
 #' @description
-#' Collect web-based data to to track public health trends, behaviors, and disease outbreaks in
+#' Collect web-based data to track public health trends, behaviors, and disease outbreaks in
 #' real time
 #'
 #' @name infoveillance-package
 #'
-#' @import methods S7
+#' @import methods S7 data.table rtemis.core
 "_PACKAGE"
 
 NULL

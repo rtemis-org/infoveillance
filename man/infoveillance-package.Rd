@@ -6,7 +6,8 @@
 \alias{infoveillance-package}
 \title{\pkg{infoveillance}: 'infoveillance' Package}
 \description{
-What the package does, in one paragraph ending with a period.
+Collect web-based data to track public health trends, behaviors, and disease outbreaks in
+real time
 }
 \seealso{
 Useful links:
