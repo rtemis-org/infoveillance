@@ -1,0 +1,26 @@
+Package: infoveillance
+Version: 0.0.1
+Title: 'infoveillance' Package
+Date: 2026-09-13
+Authors@R: person(given = "E.D.", family = "Gennatas", role = c("aut", "cre", "cph"),
+    email = "gennatas@gmail.com", comment = c(ORCID = "0000-0001-9280-3609"))
+Description: Utilities to collect web-based data to track public health trends, behaviors, and 
+  disease outbreaks in real time
+License: BSD_3_clause + file LICENSE
+URL: https://www.rtemis.org, https://github.com/rtemis-org/infoveillance
+BugReports: https://github.com/rtemis-org/infoveillance/issues
+ByteCompile: yes
+Depends:
+    R (>= 4.1.0)
+Imports:
+    methods,
+    S7,
+    rtemis.core
+Suggests:
+    testthat (>= 3.0.0)
+Additional_repositories: https://rtemis-org.r-universe.dev
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Config/testthat/edition: 3
+Config/testthat/parallel: true
+Config/roxygen2/version: 8.1.0
