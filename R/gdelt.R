@@ -52,8 +52,10 @@ gdelt_state <- new.env(parent = emptyenv())
 #'
 #' GDELT accepts at most one request every five seconds per client.
 #' `query_gdelt()` makes one request per call and waits as needed so that
-#' repeated calls in the same session respect that limit; if GDELT still
-#' rejects a request as too frequent, it is retried once after a pause.
+#' repeated calls in the same session respect that limit. GDELT also answers
+#' with the same "too many requests" rejection when its servers are busy,
+#' regardless of how requests are spaced, so a rejected request is retried
+#' up to `retries` times with an increasing pause between attempts.
 #'
 #' @param keywords Character: One or more keywords or phrases to search for.
 #' @param match Character: `"all"` requires every keyword; `"any"` requires at
@@ -85,6 +87,9 @@ gdelt_state <- new.env(parent = emptyenv())
 #' @param timeline_smooth Integer or NULL: Moving-average window (in time
 #'   steps, up to `30L`) applied to timeline modes.
 #' @param timeout Numeric: Seconds to wait for a response.
+#' @param retries Integer: Maximum number of times to retry a request GDELT
+#'   rejects as too frequent. The pause before each retry doubles from five
+#'   seconds up to thirty.
 #' @param verbosity Integer: Verbosity level.
 #'
 #' @return `data.table`. In `"artlist"` mode, one row per article with columns
@@ -139,6 +144,7 @@ query_gdelt <- function(
   sort = c("datedesc", "dateasc", "tonedesc", "toneasc", "hybridrel"),
   timeline_smooth = NULL,
   timeout = 60,
+  retries = 5L,
   verbosity = 1L
 ) {
   match <- match.arg(match)
@@ -147,6 +153,7 @@ query_gdelt <- function(
   check_bounded_integer_scalar(max_records, 1L, 250L)
   check_optional_bounded_integer_scalar(timeline_smooth, 1L, 30L)
   check_pos_double_scalar(timeout)
+  check_bounded_integer_scalar(retries, 0L, 20L)
   check_integer_scalar(verbosity)
 
   query <- gdelt_build_query(
@@ -176,7 +183,12 @@ query_gdelt <- function(
     paste0(names(params), "=", curl::curl_escape(params), collapse = "&")
   )
   info("Querying GDELT: ", query, verbosity = verbosity)
-  res <- gdelt_fetch(url, timeout = timeout)
+  res <- gdelt_fetch(
+    url,
+    timeout = timeout,
+    retries = retries,
+    verbosity = verbosity
+  )
   out <- switch(
     mode,
     artlist = gdelt_parse_articles(res),
@@ -362,7 +374,7 @@ gdelt_format_datetime <- function(
 # %% gdelt_fetch ----
 # GET `url` and return the parsed JSON. GDELT reports query errors as HTTP 200
 # with a plain-text body, so a body that is not JSON is surfaced as the error.
-gdelt_fetch <- function(url, timeout = 60) {
+gdelt_fetch <- function(url, timeout = 60, retries = 5L, verbosity = 1L) {
   handle <- curl::new_handle(
     useragent = paste0(
       "infoveillance/",
@@ -373,12 +385,25 @@ gdelt_fetch <- function(url, timeout = 60) {
     connecttimeout = as.integer(ceiling(timeout))
   )
   res <- gdelt_request(url, handle)
-  # GDELT's rate limiter is stricter than the documented interval when the
-  # server is slow; back off and retry before giving up.
-  for (backoff in c(1, 2) * gdelt_min_interval) {
+  # GDELT sends HTTP 429 not only for requests that are too frequent but also
+  # when it is overloaded, for requests spaced well beyond the documented
+  # interval, and without a Retry-After header. Under load roughly half of all
+  # requests fail this way, so back off and retry rather than giving up.
+  for (attempt in seq_len(retries)) {
     if (res[["status_code"]] != 429L) {
       break
     }
+    backoff <- gdelt_backoff(attempt)
+    info(
+      "GDELT is busy; retrying in ",
+      round(backoff),
+      " s (",
+      attempt,
+      "/",
+      retries,
+      ")",
+      verbosity = verbosity
+    )
     Sys.sleep(backoff)
     res <- gdelt_request(url, handle)
   }
@@ -407,6 +432,15 @@ gdelt_fetch <- function(url, timeout = 60) {
     }
   )
 } # /infoveillance::gdelt_fetch
+
+
+# %% gdelt_backoff ----
+# Seconds to wait before retry `attempt`: the minimum interval doubling each
+# attempt up to 30 s, with a little jitter so that concurrent sessions do not
+# retry in lockstep.
+gdelt_backoff <- function(attempt) {
+  min(gdelt_min_interval * 2^(attempt - 1), 30) + stats::runif(1, 0, 1)
+} # /infoveillance::gdelt_backoff
 
 
 # %% gdelt_request ----

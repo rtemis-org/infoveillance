@@ -19,6 +19,7 @@ Imports:
     methods,
     rtemis.core (>= 0.4.6),
     S7,
+    stats,
     utils
 Suggests:
     testthat (>= 3.0.0)

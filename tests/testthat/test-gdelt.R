@@ -227,6 +227,50 @@ test_that("gdelt_request paces requests", {
 })
 
 
+test_that("gdelt_fetch retries on HTTP 429 and gives up after retries", {
+  gdelt_response <- function(status, body) {
+    list(status_code = status, content = charToRaw(body))
+  }
+  busy <- gdelt_response(429L, "Please limit requests")
+  ok <- gdelt_response(200L, '{"articles": []}')
+  calls <- 0L
+  local_mocked_bindings(
+    gdelt_request = function(url, handle) {
+      calls <<- calls + 1L
+      if (calls < 3L) busy else ok
+    },
+    gdelt_backoff = function(attempt) 0
+  )
+  expect_equal(
+    gdelt_fetch("http://example.invalid/", retries = 5L, verbosity = 0L),
+    list(articles = list())
+  )
+  expect_equal(calls, 3L)
+
+  calls <- 0L
+  expect_error(
+    gdelt_fetch("http://example.invalid/", retries = 1L, verbosity = 0L),
+    "HTTP 429",
+    class = "infoveillance_gdelt_error"
+  )
+  expect_equal(calls, 2L)
+
+  calls <- 0L
+  expect_error(
+    gdelt_fetch("http://example.invalid/", retries = 0L, verbosity = 0L),
+    class = "infoveillance_gdelt_error"
+  )
+  expect_equal(calls, 1L)
+})
+
+
+test_that("gdelt_backoff doubles up to 30 s", {
+  b <- vapply(1:6, gdelt_backoff, numeric(1))
+  expect_true(all(b >= c(5, 10, 20, 30, 30, 30)))
+  expect_true(all(b < c(5, 10, 20, 30, 30, 30) + 1))
+})
+
+
 test_that("query_gdelt retrieves articles and timelines", {
   skip_on_cran()
   # GDELT rate-limits per IP, and CI runners share theirs.

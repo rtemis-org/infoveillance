@@ -21,6 +21,7 @@ query_gdelt(
   sort = c("datedesc", "dateasc", "tonedesc", "toneasc", "hybridrel"),
   timeline_smooth = NULL,
   timeout = 60,
+  retries = 5L,
   verbosity = 1L
 )
 }
@@ -70,6 +71,10 @@ steps, up to \code{30L}) applied to timeline modes.}
 
 \item{timeout}{Numeric: Seconds to wait for a response.}
 
+\item{retries}{Integer: Maximum number of times to retry a request GDELT
+rejects as too frequent. The pause before each retry doubles from five
+seconds up to thirty.}
+
 \item{verbosity}{Integer: Verbosity level.}
 }
 \value{
@@ -106,8 +111,10 @@ a unit: \code{min} (minutes), \code{h} (hours), \code{d} (days), \code{w} (weeks
 
 GDELT accepts at most one request every five seconds per client.
 \code{query_gdelt()} makes one request per call and waits as needed so that
-repeated calls in the same session respect that limit; if GDELT still
-rejects a request as too frequent, it is retried once after a pause.
+repeated calls in the same session respect that limit. GDELT also answers
+with the same "too many requests" rejection when its servers are busy,
+regardless of how requests are spaced, so a rejected request is retried
+up to \code{retries} times with an increasing pause between attempts.
 }
 \examples{
 \dontrun{
