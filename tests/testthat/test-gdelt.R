@@ -229,6 +229,8 @@ test_that("gdelt_request paces requests", {
 
 test_that("query_gdelt retrieves articles and timelines", {
   skip_on_cran()
+  # GDELT rate-limits per IP, and CI runners share theirs.
+  skip_on_ci()
   skip_if_offline("api.gdeltproject.org")
 
   out <- query_gdelt(

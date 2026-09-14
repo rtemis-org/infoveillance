@@ -17,7 +17,7 @@ Imports:
     data.table,
     jsonlite,
     methods,
-    rtemis.core,
+    rtemis.core (>= 0.4.6),
     S7,
     utils
 Suggests:
